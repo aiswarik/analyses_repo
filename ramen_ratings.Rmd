@@ -1,0 +1,187 @@
+---
+title: "ramen_insights"
+author: "Aiswarik"
+date: "7/16/2021"
+output: rmarkdown::github_document
+---
+# Importing libraries
+
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+library(janitor)
+library(readr)
+```
+
+
+# Importing the data
+## Converting data types of relevant columns from char to numeric
+
+
+```{r}
+df_1 <- read_csv("Top ten.csv", col_types = cols(Stars = col_number(), `Top Ten Rates` = col_number()))
+```
+
+
+# Getting a taste of the data
+
+
+```{r}
+str(df_1)
+```
+
+
+# Selecting relevant columns for our analysis
+
+
+```{r}
+df_2 <- df_1 %>% 
+  select("Brand", "Stars", "Style", "Country", "Review #") %>% 
+  drop_na()
+```
+
+
+# Style of serving versus star ratings in different countries
+
+
+Let us try to find the preference of style of serving in different countries based on the ratings received for the different types of servings.
+
+
+```{r}
+ggplot(data = df_2) + geom_bar(mapping = aes(x = Stars, fill = Style)) + labs(title = "Style of serving vs Star ratings in different countries") +
+    facet_wrap(~Country)
+```
+
+
+This plot is not very clear, so we focus on the popularity of each style of serving in different countries instead.
+
+
+# Style of serving in different countries
+
+
+```{r}
+ggplot(data = df_2) + geom_bar(mapping = aes(x = Country, fill = Style)) + labs(title = "Style of serving in different countries") + theme(axis.text.x = element_text(angle = 45))
+```
+
+
+# Popularity of different styles of serving
+
+
+```{r}
+df_3 <- df_2 %>% 
+  group_by(Style) %>% 
+  summarise(Style_freq = n()) %>% 
+  arrange(desc(Style_freq))
+```
+
+
+```{r}
+View(df_3)
+```
+
+
+```{r}
+ggplot(df_3) + geom_col(aes(x = Style, y= Style_freq, fill = Style_freq)) + labs(title = "Style of serving in order") +
+  annotate("text", x=6, y=750, label="1", fontface="bold", size=9 ,color="red")
+```           
+
+
+
+# Sorting brands by popularity on the basis of quantity ordered
+
+
+```{r}
+df_4 <- df_1 %>% 
+  select("Brand", "Country") %>% 
+  count(Brand) %>%
+  rename("brand_order" = "n") %>% 
+  arrange(-brand_order)
+```
+
+
+```{r}
+print(df_4)
+```
+
+
+# Top ten brands on the basis of quantity ordered
+
+
+```{r}
+df_5 <- df_2 %>%
+  group_by(Brand) %>%
+  summarise(quantity = n()) %>%
+  arrange(desc(quantity)) %>%
+  top_n(10)
+```
+
+
+
+```{r}
+print(df_5)
+```
+
+
+
+```{r}
+ggplot(df_5) + geom_col(mapping = aes(x = quantity,y = Brand, fill = Brand)) + labs(title = "Top 10 brands vs their quantity ordered")
+```
+
+
+# Order quantity of Ramen noodles by country
+
+
+```{r}
+df_6 <- df_1 %>% 
+  select("Brand", "Country") %>% 
+  count(Country) %>% 
+  rename("Country_order" = "n") %>% 
+  arrange(-Country_order)
+```
+
+
+```{r}
+print(df_6)
+```
+
+
+```{r}
+ggplot(data = df_6) + geom_col(mapping = aes(x = Country_order, y = Country)) + labs(title = "Order quantity by country")
+```
+
+
+# Mean ratings of different countries
+
+
+```{r}
+df_7 <- df_2 %>%
+  group_by(Country) %>%
+  summarise(mean_rating = mean(Stars)) %>% 
+  arrange(-mean_rating)
+```
+
+
+```{r}
+print(df_7)
+```
+
+
+```{r}
+ggplot(data = df_7) + geom_col(mapping = aes(x = Country, y = mean_rating)) + labs(title = "Mean ratings by country") + theme(axis.text.x = element_text(angle = 45))
+```
+
+
+
+# Observations
+* Packs are the most popular style of serving for ramen noodles, followed by cups and bowls.
+* The lowest mean ratings for ramen noodles are from Canada,while the highest mean ratings are from Myanmar.
+* Japan stands at the top consumer of ramen noodles, followed by USA and South Korea. The mean rating in Japan and South Korea are 4.186 and 4.033 respectively.
+* Average rating in the USA is 3.606 only, despite being the second largest consumer. So, there is potential business opportunity for better quality of ramen noodles in the USA.
+* China, despite being the sixth largest consumer (by order quantity), has a mean rating of 3.422. So, there is potential business opportunity for better quality of ramen noodles in China as well.
+* Canada has the lowest mean rating, despite being the 14th largest consumer of ramen noodles (by order quantity). So, there is a huge market for better noodles here as well.
+* Even though packs are the most popular style of serving in general, in Japan, ramen noodles in bowls are almost equally as popular as those in packs.
+* Use of boxes and bars for serving is negligible and can be stopped.
+* Trays for serving are most popular in the USA, followed by Japan, South KOrea, Taiwan and China. For the rest of the markets, use of trays for serving is not popular and can be reduced or eliminated.
+* Nissin is the most popular brand of ramen noodles. It is followed by Nongshim and Maruchan. However, Nissin has almost four times (3.887 to be exact!) more orders as compared to its closest competitor Nongshim.
