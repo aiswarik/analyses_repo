@@ -1,0 +1,408 @@
+---
+title: "Flight data analysis"
+author: "Aiswarik"
+date: "7/23/2021"
+output: html_document
+---
+
+# Import libraries
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(ggplot2)
+library(readr)
+library(janitor)
+```
+
+# Import data
+
+```{r}
+df_1 <- read_csv("Airport dataset/International_Report_Departures.csv", 
+                 col_types = cols(data_dte = col_date(format = "%m/%d/%Y")))
+```
+
+# Getting a taste of the data
+
+```{r}
+str(df_1)
+skim_without_charts(df_1)
+colnames(df_1)
+```
+
+# Selecting relevant columns
+
+```{r}
+df_2 <- df_1 %>% 
+  select("data_dte", "Year", "Month", "usg_apt", "usg_apt_id", "airlineid", "carrier") %>% 
+  group_by(data_dte) %>% 
+  arrange(data_dte)
+```
+
+# Selecting data for the last 20 years
+
+```{r}
+df_3 <- df_2 %>%
+  select("data_dte", "Year", "usg_apt", "usg_apt_id", "airlineid") %>% 
+  filter(Year > 1999)
+view(df_3)
+```
+
+```{r}
+df_4 <- df_3 %>%
+  select("data_dte", "usg_apt", "usg_apt_id", "airlineid") %>% 
+  count(airlineid) %>% 
+  rename("airlineid_count" = "n") %>% 
+  arrange(-airlineid_count)
+view(df_4)
+```
+
+# Total departure flights against years
+
+```{r}
+df_5 <- df_1 %>% 
+  select("Year") %>%
+  filter(Year > 1999) %>% 
+  count(Year) %>%
+  rename("total_flights" = "n") %>% 
+  arrange(-total_flights)
+print(df_5)
+```
+
+# Plot
+
+```{r}
+ggplot(df_5) + geom_col(mapping = aes(x = Year, y = total_flights, fill = total_flights)) + scale_fill_gradient2(low = "grey", high = "red", mid = "yellow", midpoint = 20000) + labs(
+  title = "Total flights against years", subtitle = "Data period: 2000 - 2020", caption = "US Departure flights"
+)
+
+ggsave("plot.png", width = 10, height = 5)
+```
+
+# Total departure flights against months
+
+```{r}
+df_6 <- df_2 %>% 
+  select("Month", "Year") %>%
+  filter(Year > 1999) %>% 
+  group_by(Month) %>%
+  summarise(flights = n()) %>%
+  arrange(desc(flights))
+print(df_6)
+```
+
+# Plot
+
+```{r}
+ggplot(df_6) + geom_col(aes(x = Month, y = flights, fill = flights)) + scale_fill_gradient2(low="grey", high="red", mid="yellow", midpoint=57000) + labs(
+title = "Total flights against months", subtitle = "Data period: 2000 - 2020", caption = "US Departure flights"  
+)
+
+ggsave("plot.png", width = 10, height = 5)
+```
+
+
+# Busiest airport in terms of departing flights
+
+```{r}
+df_7 <- df_2 %>% 
+  group_by(usg_apt) %>%
+  filter(Year > 1999) %>% 
+  summarise(count = n()) %>%
+  arrange(-count) %>%
+  top_n(20)
+print(df_7)
+```
+
+# Plot
+
+```{r}
+ggplot(df_7) + geom_col(mapping = aes(x = usg_apt, y = count, fill = count)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 44352) + labs(title = "Top 20 busiest airports", subtitle = "Data period: 2000 - 2020", caption = "Top 20 busiest US airports by departure") +
+  annotate("text", x=14, y=50000, fontface = "bold" ,label="Busiest", size=4 ,color="black", angle=90) + theme(axis.text.x = element_text(angle = 45))
+
+ggsave("plot.png", width = 15, height = 5)
+```
+
+
+# Arrival flights data
+
+```{r}
+df_01 <- df_1 %>% 
+  select("data_dte", "Year", "Month", "fg_apt", "fg_apt_id", "airlineid") %>% 
+  group_by(data_dte) %>% 
+  arrange(data_dte)
+print(df_01)
+```
+
+# Top 20 flight destinations
+
+```{r}
+df_02 <- df_01 %>% 
+  group_by(fg_apt) %>%
+  filter(Year > 1999) %>% 
+  summarise(count = n()) %>%
+  arrange(-count) %>% 
+  top_n(20)
+  
+print(df_02)
+```
+
+# Plot
+
+```{r}
+ggplot(df_02) + geom_col(aes(x = fg_apt, y = count, fill = count)) + labs(title = "Top 20 flight destinations", subtitle = "Data period: 2000-2020", caption = "Top 20 arrival destinations for US flights")  + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 20000) + theme(axis.text.x = element_text(angle = 45)) + 
+  annotate(
+  "text", x = 20, y = 20000, label = "Busiest", fontface = "bold", size = 5, color = "black", angle = 90)
+
+ggsave("plot.png", width = 10, height = 5)
+```
+
+
+# Observations
+* After 2009, the total flights count is on a increasing trend till 2018 when it is at the highest, and lowest in the year 2020. The flight count reduced by 75.83% in 2020 as compared to the flight count of 2018.
++ Apart from the fall in 2020, two other dips can be seen in the plot at around the periods: 2001-'03 and 2008-'09.
++ For the period of analysis, flight count appears to be highest in the month of March, and lowest in the months of September-November.
++ Miami airport is the busiest airport in terms of departing flight counts, followed by JFK airport. The departing flight count for Miami airport is 1.75 times that of JFK airport.
++ Toronto (Toronto Pearson Airport, YYZ) is the top flight destination, followed by Cancun and Mexico.
+
+
+# Passengers Dataset
+
+
+# Importing dataset (with appropriate data types for respective columns)
+
+```{r}
+df_001 <- read_csv("Airport dataset/International_Report_Passengers.csv", 
+                           col_types = cols(Year = col_number(), 
+                                            Month = col_number(), usg_apt_id = col_number(), 
+                                            fg_apt_id = col_number(), Scheduled = col_number(), 
+                                            Charter = col_number(), Total = col_number()))
+
+
+View(df_001)
+```
+
+# Getting a taste of the data
+
+```{r}
+str(df_001)
+skim_without_charts(df_001)
+summary(df_001)
+```
+
+
+# Verifying that the data contains passenger type flights only
+
+```{r}
+df_z <- df_001 %>% 
+  group_by(type) %>% 
+  distinct(type)
+view(df_z)
+```
+
+# Selecting relevant columns for our analysis
+
+```{r}
+df_002 <- df_001 %>% 
+  select('Year', 'Month', 'usg_apt', 'usg_apt_id', 'fg_apt', 'fg_apt_id', 'Scheduled', 'Charter', 'Total') %>% 
+  filter(Year > 1999)
+view(df_002)
+```
+
+# Sorting total flights by year for the last 20 years
+
+```{r}
+df_003 <- df_002 %>%
+  group_by(Year) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_003)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_003) + geom_col(mapping = aes(x = Year, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = 'blue', high = 'red', mid = 'green', midpoint = 1.25e+08) + labs(title = "Total passenger flights", subtitle = "Data period: 2000-2020")
+```
+
+# Scheduled flights count per year
+
+```{r}
+df_x <- df_002 %>% 
+  group_by(Year) %>% 
+  summarise(sum(Scheduled)) %>%
+  rename('Scheduled_flights_count' = 'sum(Scheduled)') %>% 
+  arrange(-Scheduled_flights_count) 
+print(df_x)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_x) + geom_col(aes(x = Year, y = Scheduled_flights_count, fill = Scheduled_flights_count)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 1.5e+08) + theme(axis.text.y = element_text(angle = 45)) + labs(title = "Scheduled flights count", subtitle = "Data period: 2000-2020")
+```
+
+
+
+# Charter flights count per year
+
+```{r}
+df_y <- df_002 %>% 
+  group_by(Year) %>% 
+  summarise(sum(Charter)) %>%
+  rename('Charter_flights_count' = 'sum(Charter)') %>% 
+  arrange(-Charter_flights_count)
+print(df_y)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_y) + geom_col(aes(x = Year, y = Charter_flights_count, fill = Charter_flights_count)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 5e+06) + theme(axis.text.y = element_text(angle = 45)) + labs(title = "Charter flights count", subtitle = "Data period: 2000-2020")
+```
+
+
+
+# Analyzing the dips:
+
+## Total flight counts by month for the years that saw a dip in the yearly plot for total flights
+
+## For the period 2001-'03:
+
+* 2001:
+
+```{r}
+df_dip_10 <- df_002 %>%
+  group_by(Month) %>% 
+  filter(Year == 2001) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_dip_10)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_dip_10) + geom_col(mapping = aes(x = Month, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 5e+06) + labs(title = "Flight count by month", subtitle = "Data period: 2001")
+```
+
+
+** Analyzing the dip in the flight count for 2001 from the month of August:
+
+```{r}
+df_dip_100 <- df_001 %>% 
+  group_by(data_dte) %>% 
+  filter(Year == 2001, Month > 7) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_dip_100)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_dip_100) + geom_col(mapping = aes(x = data_dte, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 1.0e+07) + labs(title = "Flight count for August to December", subtitle = "Data period: 2001")
+```
+
+# Analyzing the dip in the flight count for 2002 and 2003:
+
+* For 2002:
+
+```{r}
+df_dip_11 <- df_002 %>%
+  group_by(Month) %>% 
+  filter(Year == 2002) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_dip_11)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_dip_11) + geom_col(mapping = aes(x = Month, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 1.0e+07) + labs(title = "Flight count by month", subtitle = "Data period: 2002")
+```
+
+* For 2003:
+
+```{r}
+df_dip_12 <- df_002 %>%
+  group_by(Month) %>% 
+  filter(Year == 2003) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_dip_12)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_dip_12) + geom_col(mapping = aes(x = Month, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 1.0e+07) + labs(title = "Flight count by month", subtitle = "Data period: 2003")
+```
+
+# Comparative plot of the dip in 2001-'03 period with the neighboring years
+
+```{r}
+df_dip_101 <- df_002 %>%
+  group_by(Year) %>% 
+  filter(Year > 1999, Year < 2007) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+ggplot(data = df_dip_101) + geom_col(aes(x = Year, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 1e+08) + labs(title = "Flight count by year", subtitle = "Data period: 2000-2006")
+```
+
+## For the year 2008-09:
+
+* 2008:
+
+```{r}
+df_dip_20 <- df_002 %>%
+  group_by(Month) %>% 
+  filter(Year == 2008) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_dip_20)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_dip_20) + geom_col(mapping = aes(x = Month, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 7.25e+06) + labs(title = "Flight count by month", subtitle = "Data period: 2008")
+```
+
+* 2009:
+
+```{r}
+df_dip_21 <- df_002 %>%
+  group_by(Month) %>% 
+  filter(Year == 2009) %>% 
+  summarise(sum(Total)) %>% 
+  rename('Total_flights' = 'sum(Total)') %>% 
+  arrange(-Total_flights)
+view(df_dip_21)
+```
+
+# Plot
+
+```{r}
+ggplot(data = df_dip_21) + geom_col(mapping = aes(x = Month, y = Total_flights, fill = Total_flights)) + scale_fill_gradient2(low = "blue", high = "red", mid = "green", midpoint = 7.25e+06) + labs(title = "Flight count by month", subtitle = "Data period: 2009")
+```
+
+
+# Observations
+
+* The total flight counts per year was on a path of steady increase since the slight dip in 2009, until it fell to its lowest in 2020.
++ The use of charter flights have been on a continual decline.
++ The use of scheduled flights on the other hand, have seen a steady growth.
++ The flight count for both scheduled as well as charter flights (and hence the total flight count) have dropped sharply to their lowest count in the year 2020 (owing to the global pandemic).
++ We can see that in addition to the global pandemic in 2020, there have been two more dips in the total flights count per year plot- the fall in 2001-'03, and the fall in 2009.
++ The 2001-'03 dip started in September 2001, which aligns with the terrorist attacks on the US soil. This major tragic event led to a dip in the flight count for the following two months to the lowest point. Fear seems to be the most probable reason for this dip.
++ The 2008-'09 dip began after August of '08, which is around the same time as that of the housing crisis and the market crash of '08. Rise in fuel prices as a result of the recession seems to be the most probable cause of this dip.
++ We can safely conclude that the airline industry is very prone to external events such as global pandemic, acts of terrorism and recession.
